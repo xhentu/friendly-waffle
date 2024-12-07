@@ -1,0 +1,126 @@
+{% extends 'core/layout.html' %}
+{% load static %}
+<!-- this is title -->
+{% block title %}
+Staff Dashboard
+{% endblock %}
+
+<!-- this is for aside -->
+{% block sidebar %}
+<style>
+    /* Button Styles */
+.sidebar ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+.sidebar li {
+    margin-bottom: 10px;
+}
+
+.sidebar button {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    color: #fff;
+    background-color: #007bff;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+    text-align: left;
+    transition: background-color 0.3s ease;
+}
+
+.sidebar button:hover {
+    background-color: #0056b3;
+}
+
+/* Dropdown Container with Animation */
+.dropdown-content {
+    max-height: 0; /* Hidden initially */
+    overflow: hidden;
+    background-color: #f9f9f9;
+    padding: 0 10px; /* Padding only horizontal */
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    transition: max-height 0.5s ease, padding 0.5s ease;
+}
+
+.dropdown-content a {
+    text-decoration: none;
+    display: block;
+    margin: 10px 0;
+    color: #333;
+}
+
+.dropdown-content a:hover {
+    color: #007bff;
+}
+
+/* When dropdown is visible */
+.dropdown-content.active {
+    max-height: 200px; /* Adjust this based on the number of links */
+    padding: 10px;
+}
+</style>
+<div class="sidebar">
+    <ul>
+        <li>
+            <button onclick="profile()">Profile</button>
+        </li>
+        <li>
+            <button onclick="toggleDropdown('academic-year-dropdown')">Manage Academic Year</button>
+            <div id="academic-year-dropdown" class="dropdown-content">
+                <a onclick="academicYear()">View Academic Year</a>
+                <a onclick="editAcademicYear()">Create Academic Years</a>
+            </div>
+        </li>
+        <li>
+            <button onclick="toggleDropdown('classes-dropdown')">Manage Classes</button>
+            <div id="classes-dropdown" class="dropdown-content">
+                <a href="#">Create Class</a>
+                <a href="#">View Classes</a>
+            </div>
+        </li>
+        <li>
+            <button onclick="toggleDropdown('users-dropdown')">Manage Users</button>
+            <div id="users-dropdown" class="dropdown-content">
+                <a href="#">Create User</a>
+                <a href="#">View Users</a>
+            </div>
+        </li>
+        <li>
+            <button onclick="toggleDropdown('notifications-dropdown')">Manage Notifications</button>
+            <div id="notifications-dropdown" class="dropdown-content">
+                <a href="#">Create Notification</a>
+                <a href="#">View Notifications</a>
+            </div>
+        </li>
+    </ul>
+</div>
+{% endblock %}
+
+<!-- this is main content -->
+{% block content %}
+<div id="main">
+    <h1>Welcome to the Staff Dashboard</h1>
+</div>
+{% endblock %}
+
+<!-- JavaScript -->
+{% block script %}
+<script>
+    // Function to toggle the visibility of dropdowns with animation
+    function toggleDropdown(id) {
+        const dropdown = document.getElementById(id);
+
+        // Toggle the 'active' class to apply the animation
+        if (dropdown.classList.contains('active')) {
+            dropdown.classList.remove('active');
+        } else {
+            dropdown.classList.add('active');
+        }
+    }
+</script>
+<script src="{% static 'js/staff_dashboard.js' %}"></script>
+{% endblock %}

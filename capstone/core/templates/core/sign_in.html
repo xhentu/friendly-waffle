@@ -1,0 +1,62 @@
+{% extends 'core/layout.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-4">
+            <!-- Card container -->
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <!-- Title -->
+                    <h2 class="card-title text-center mb-4">Sign In</h2>
+
+                    <!-- Error message -->
+                    {% if error %}
+                        <div class="alert alert-danger" role="alert">
+                            {{ error }}
+                        </div>
+                    {% endif %}
+
+                    <!-- Form -->
+                    <form method="POST">
+                        {% csrf_token %}
+                        <!-- Username Field -->
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                        </div>
+
+                        <!-- Password Field -->
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+
+                        <!-- Sign In Button -->
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">Sign In</button>
+                        </div>
+                    </form>
+
+                    <!-- Sign-Up Link -->
+                    <p class="text-center mt-3">
+                        Don't have an account? <a href="#" class="text-decoration-none">Sign Up</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+    // Hide the aside element on the sign-in page
+    document.addEventListener('DOMContentLoaded', function () {
+        const asideElement = document.querySelector('aside');
+        if (asideElement) {
+            asideElement.style.display = 'none';
+        }
+    });
+</script>
+{% endblock %}

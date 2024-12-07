@@ -1,0 +1,49 @@
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+    font-family: Arial, sans-serif;
+}
+
+/* Flex container for layout */
+.flex-wrapper {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.content {
+    flex: 1; /* Take up remaining height */
+    display: flex; /* Horizontal alignment of aside and main */
+}
+
+aside {
+    flex: 0 0 25%; /* Sidebar width */
+    background-color: #f8f9fa; /* Sidebar color */
+    padding: 1rem;
+}
+
+main {
+    flex: 1; /* Main content fills the remaining space */
+    padding: 1rem;
+    background-color: #f8f9fa; /* Red background for debugging */
+}
+
+footer {
+    background-color: #f8f9fa;
+    text-align: center;
+    padding: 1rem 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .content {
+        flex-direction: column; /* Stack sidebar and main */
+    }
+    aside, main {
+        flex: 0 0 100%; /* Take full width */
+    }
+}
