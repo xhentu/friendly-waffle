@@ -1,7 +1,8 @@
-document.addEventListener('DOMContentLoaded', {
+document.addEventListener('DOMContentLoaded', () => {
+    // Add any initialization logic here, if needed
+});
 
-})
-
+// Function to handle profile data fetching and rendering
 function profile() {
     fetch('/profile')
         .then(response => {
@@ -11,60 +12,57 @@ function profile() {
             return response.json();
         })
         .then(data => {
-            // Clear existing content in the #main div
             const mainContainer = document.getElementById("main");
             mainContainer.innerHTML = "";
 
-            // Populate the #main div with profile content
-            mainContainer.innerHTML = `
-            <div id="profile-content" class="card shadow-sm p-4">
-                <div class="card-header text-center bg-primary text-white">
-                    <h3>Profile Details</h3>
-                </div>
-                <div class="card-body">
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <p class="mb-1"><strong>Username:</strong></p>
-                            <p class="text-muted">${data.username}</p>
-                        </div>
-                        <div class="col-md-6">
-                            <p class="mb-1"><strong>Email:</strong></p>
-                            <p class="text-muted">${data.email}</p>
-                        </div>
+            const profileContent = `
+                <div id="profile-content" class="card shadow-sm p-4">
+                    <div class="card-header text-center bg-primary text-white">
+                        <h3>Profile Details</h3>
                     </div>
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <p class="mb-1"><strong>Role:</strong></p>
-                            <p class="text-muted">${data.role}</p>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Username:</strong></p>
+                                <p class="text-muted">${data.username}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Email:</strong></p>
+                                <p class="text-muted">${data.email}</p>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <p class="mb-1"><strong>Gender:</strong></p>
-                            <p class="text-muted">${data.gender || "Not specified"}</p>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Role:</strong></p>
+                                <p class="text-muted">${data.role}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Gender:</strong></p>
+                                <p class="text-muted">${data.gender || "Not specified"}</p>
+                            </div>
                         </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <p class="mb-1"><strong>Religion:</strong></p>
-                            <p class="text-muted">${data.religion || "Not specified"}</p>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Religion:</strong></p>
+                                <p class="text-muted">${data.religion || "Not specified"}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Phone:</strong></p>
+                                <p class="text-muted">${data.phone_number || "Not specified"}</p>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <p class="mb-1"><strong>Phone:</strong></p>
-                            <p class="text-muted">${data.phone_number || "Not specified"}</p>
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <p class="mb-1"><strong>Address:</strong></p>
+                                <p class="text-muted">${data.address || "Not specified"}</p>
+                            </div>
                         </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <p class="mb-1"><strong>Address:</strong></p>
-                            <p class="text-muted">${data.address || "Not specified"}</p>
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <p class="mb-1"><strong>Date of Birth:</strong></p>
-                            <p class="text-muted">${data.date_of_birth || "Not specified"}</p>
-                        </div>
-                        ${
-                            data.salary
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Date of Birth:</strong></p>
+                                <p class="text-muted">${data.date_of_birth || "Not specified"}</p>
+                            </div>
+                            ${data.salary
                                 ? `
                                 <div class="col-md-6">
                                     <p class="mb-1"><strong>Salary:</strong></p>
@@ -72,10 +70,9 @@ function profile() {
                                 </div>
                                 `
                                 : ""
-                        }
-                    </div>
-                    ${
-                        data.students
+                            }
+                        </div>
+                        ${data.students
                             ? `
                             <div class="row mb-3">
                                 <div class="col-md-12">
@@ -85,14 +82,15 @@ function profile() {
                             </div>
                             `
                             : ""
-                    }
+                        }
+                    </div>
+                    <div class="card-footer text-center">
+                        <button class="btn btn-secondary" onclick="reloadDashboard()">Back to Dashboard</button>
+                    </div>
                 </div>
-                <div class="card-footer text-center">
-                    <button class="btn btn-secondary" onclick="reloadDashboard()">Back to Dashboard</button>
-                </div>
-            </div>
-        `;
-                })
+            `;
+            mainContainer.innerHTML = profileContent;
+        })
         .catch(error => {
             console.error("Error fetching profile data:", error);
             const mainContainer = document.getElementById("main");
@@ -102,10 +100,10 @@ function profile() {
                 </div>
             `;
         });
-}
+};
 
-function academicYear() {
-    fetch('/academic-years')
+function getAcademicYears() {
+    fetch('/getAcademicYears/')
         .then(response => {
             if (!response.ok) {
                 throw new Error("Network response was not ok");
@@ -116,7 +114,7 @@ function academicYear() {
             const mainContainer = document.getElementById("main");
             mainContainer.innerHTML = "";
 
-            let academicYearContent = `
+            let academicYearsContent = `
                 <div class="card shadow-sm p-4">
                     <div class="card-header text-center bg-primary text-white">
                         <h3>Academic Years</h3>
@@ -135,7 +133,7 @@ function academicYear() {
             `;
 
             data.forEach((year, index) => {
-                academicYearContent += `
+                academicYearsContent += `
                     <tr>
                         <td>${index + 1}</td>
                         <td>${year.year}</td>
@@ -148,30 +146,31 @@ function academicYear() {
                 `;
             });
 
-            academicYearContent += `
+            academicYearsContent += `
                             </tbody>
                         </table>
                         <button class="btn btn-secondary" onclick="reloadDashboard()">Back to Dashboard</button>
                     </div>
                 </div>
             `;
-
-            mainContainer.innerHTML = academicYearContent;
+            mainContainer.innerHTML = academicYearsContent;
         })
         .catch(error => {
+            console.error("Error fetching academic years data:", error);
             const mainContainer = document.getElementById("main");
             mainContainer.innerHTML = `
                 <div class="alert alert-danger">
                     Failed to load academic years data. Please try again later.
                 </div>
             `;
-            console.error("Error fetching academic years data:", error);
         });
-}
+};
 
 function editAcademicYear(id, year, isActive) {
     const mainContainer = document.getElementById("main");
-    mainContainer.innerHTML = `
+    mainContainer.innerHTML = "";
+
+    const editAcademicYearContent = `
         <div class="card shadow-sm p-4">
             <div class="card-header text-center bg-primary text-white">
                 <h3>Edit Academic Year</h3>
@@ -190,11 +189,12 @@ function editAcademicYear(id, year, isActive) {
                         </select>
                     </div>
                     <button type="submit" class="btn btn-primary">Save Changes</button>
-                    <button type="button" class="btn btn-secondary" onclick="academicYear()">Cancel</button>
+                    <button type="button" class="btn btn-secondary" onclick="getAcademicYears()">Cancel</button>
                 </form>
             </div>
         </div>
     `;
+    mainContainer.innerHTML = editAcademicYearContent;
 
     document.getElementById("edit-academic-year-form").addEventListener("submit", function (e) {
         e.preventDefault();
@@ -216,28 +216,44 @@ function editAcademicYear(id, year, isActive) {
                 return response.json();
             })
             .then(() => {
-                academicYear(); // Refresh the academic year list
+                getAcademicYears();
             })
             .catch(error => {
                 console.error("Error updating academic year:", error);
             });
     });
 }
-
-function deleteAcademicYear(id) {
-    if (confirm("Are you sure you want to delete this academic year?")) {
-        fetch(`/academic-years/${id}/`, {
-            method: "DELETE",
-        })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error("Failed to delete academic year");
-                }
-                academicYear(); // Refresh the academic year list
-            })
-            .catch(error => {
-                console.error("Error deleting academic year:", error);
-            });
-    }
+// funny fucking reloadDashboard 
+function reloadDashboard() {
+    const main = document.getElementById('main');
+    main.innerHTML = 'this is main';
 }
 
+function deleteAcademicYear(id) {
+    // Confirmation dialog before deletion
+    if (!confirm("Are you sure you want to delete this academic year?")) {
+        return;
+    }
+
+    // Making the DELETE request to the server
+    fetch(`/academic-years/${id}/`, {
+        method: "DELETE",
+        headers: {
+            "Content-Type": "application/json",
+        },
+    })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("Failed to delete academic year");
+            }
+            return response.json();
+        })
+        .then(data => {
+            alert(data.message); // Display success message
+            getAcademicYears();  // Refresh the list of academic years
+        })
+        .catch(error => {
+            console.error("Error deleting academic year:", error);
+            alert("An error occurred while deleting the academic year.");
+        });
+}

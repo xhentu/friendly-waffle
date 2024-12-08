@@ -51,6 +51,7 @@ Staff Dashboard
     display: block;
     margin: 10px 0;
     color: #333;
+    cursor: pointer;
 }
 
 .dropdown-content a:hover {
@@ -62,6 +63,7 @@ Staff Dashboard
     max-height: 200px; /* Adjust this based on the number of links */
     padding: 10px;
 }
+
 </style>
 <div class="sidebar">
     <ul>
@@ -71,8 +73,8 @@ Staff Dashboard
         <li>
             <button onclick="toggleDropdown('academic-year-dropdown')">Manage Academic Year</button>
             <div id="academic-year-dropdown" class="dropdown-content">
-                <a onclick="academicYear()">View Academic Year</a>
-                <a onclick="editAcademicYear()">Create Academic Years</a>
+                <a onclick="getAcademicYears()">View Academic Year</a>
+                <a onclick="createAcademicYear()">Create Academic Years</a>
             </div>
         </li>
         <li>

@@ -129,7 +129,6 @@ def staff_dashboard(request):
     context = {
         'staff_profile': staff_profile,
     }
-
     return render(request, 'core/staff_dashboard.html', context)
 
 @login_required
@@ -159,10 +158,12 @@ def profile(request):
     return JsonResponse(profile_data)
 
 @login_required
-def academicYear(request):
+def getAcademicYears(request):
+    print("getAcademicYears endpoint accessed")  # Debug log
     academic_years = AcademicYear.objects.all().values('id', 'year', 'is_active')
-    
+    print("Academic years data:", list(academic_years))  # Debug log
     return JsonResponse(list(academic_years), safe=False)
+
 
 @csrf_exempt
 @require_http_methods(["PUT", "DELETE"])
@@ -173,12 +174,28 @@ def academic_year_detail(request, id):
         return JsonResponse({"error": "Academic Year not found"}, status=404)
 
     if request.method == "PUT":
+        print('loading json')
         data = json.loads(request.body)
         academic_year.year = data.get("year", academic_year.year)
         academic_year.is_active = data.get("is_active", academic_year.is_active)
         academic_year.save()
+        print('done saving')
         return JsonResponse({"message": "Academic Year updated successfully"})
 
     if request.method == "DELETE":
         academic_year.delete()
         return JsonResponse({"message": "Academic Year deleted successfully"})
+
+@require_http_methods(["POST"])
+@login_required
+def add_academic_year(request):
+    print('it is calling add_academic_year()')
+    data = json.loads(request.body)
+    year = data.get("year")
+    is_active = data.get("is_active", True)
+
+    # Create a new academic year instance
+    new_academic_year = AcademicYear(year=year, is_active=is_active)
+    new_academic_year.save()
+
+    return JsonResponse({"message": "Academic Year added successfully"}, status=201)

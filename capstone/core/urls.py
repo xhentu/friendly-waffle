@@ -14,7 +14,9 @@ urlpatterns = [
     # Staff Dashboard
     path('staff-dashboard/', views.staff_dashboard, name='staff-dashboard'), 
 
-    path('academic-years/', views.academicYear, name='academic-years'),
+    path('getAcademicYears/', views.getAcademicYears, name='getAcademicYears'),
+    path('academic-years/add/', views.add_academic_year, name='add-academic-year'),
+    path('academic-years/<int:id>/', views.academic_year_detail, name='academic_year_detail'),
 
     # CRUD for Students
     # path('students/', views.student_list, name='student-list'),
