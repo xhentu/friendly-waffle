@@ -4,20 +4,26 @@ from django.contrib.auth.views import LogoutView
 
 urlpatterns = [
     # Home and Authentication
-    path('', views.home, name='home'), # 
+    path('', views.home, name='home'),
     path('sign-in/', views.sign_in, name='sign-in'), # done
-    # path('sign-out/', views.sign_out, name='sign-out'),
     path('log-out/', LogoutView.as_view(next_page='sign-in'), name='log-out'),
     path('profile', views.profile, name='profile'), 
+
+    # Student Dashboard
     path('student-dashboard', views.student_dashboard, name='student-dashboard'),
 
     # Staff Dashboard
     path('staff-dashboard/', views.staff_dashboard, name='staff-dashboard'), 
-
     path('getAcademicYears/', views.getAcademicYears, name='getAcademicYears'),
-    path('academic-years/add/', views.add_academic_year, name='add-academic-year'),
+    path('academic-years/add/', views.create_academic_year, name='create-academic-year'),
     path('academic-years/<int:id>/', views.academic_year_detail, name='academic_year_detail'),
+    path('view-classes/', views.get_classes_view, name='view-classes'),
 
+    path('get-active-options/', views.get_active_options, name='get-active-options'),
+    path('create-class/', views.create_class, name='create-class'),
+    path('editClass/<int:id>/', views.update_class, name='editClass'),
+    path('get-class-details/<int:id>/', views.get_class_details, name='get-class-details'),
+    path('deleteClass', views.delete_class, name="deleteClass"),
     # CRUD for Students
     # path('students/', views.student_list, name='student-list'),
     # path('students/<int:pk>/', views.student_detail, name='student-detail'),

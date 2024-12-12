@@ -82,19 +82,6 @@ def student_dashboard(request):
     # Schedule for the student's class in the active academic year
     schedule = Schedule.objects.filter(class_instance=class_instance)
     
-    # Notifications targeting the student’s class or grade in the active academic year
-    # notifications = Notification.objects.filter(
-    #     is_active=True,
-    #     scope__in=['Class', 'Grade', 'School']
-    # ).filter(
-    #     class_target=class_instance  # For class-specific notifications
-    # ) | Notification.objects.filter(
-    #     grade_target=class_instance.grade  # For grade-specific notifications
-    # ) | Notification.objects.filter(
-    #     scope='School'  # For school-wide notifications
-    # ).distinct()
-
-    # Notifications targeting the student’s class, grade, or the whole school
     notifications = Notification.objects.filter(
         is_active=True,
         scope__in=['Class', 'Grade', 'School']
@@ -186,16 +173,152 @@ def academic_year_detail(request, id):
         academic_year.delete()
         return JsonResponse({"message": "Academic Year deleted successfully"})
 
+@csrf_exempt
 @require_http_methods(["POST"])
-@login_required
-def add_academic_year(request):
-    print('it is calling add_academic_year()')
-    data = json.loads(request.body)
-    year = data.get("year")
-    is_active = data.get("is_active", True)
+def create_academic_year(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            new_year = AcademicYear.objects.create(
+                year=data.get("year"),
+                is_active=data.get("is_active", False),
+            )
+            return JsonResponse({"message": "Academic Year created successfully", "id": new_year.id}, status=201)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
 
-    # Create a new academic year instance
-    new_academic_year = AcademicYear(year=year, is_active=is_active)
-    new_academic_year.save()
+def get_classes_view(request):
+    """
+    Returns a JSON response with all classes and their related information.
+    """
+    classes = Class.objects.select_related('grade', 'academic_year').prefetch_related('timetable', 'subject_set').all()
+    
+    classes_data = [
+        {
+            "id": cls.id,
+            "name": cls.name,
+            "grade": cls.grade.name,
+            "academic_year": cls.academic_year.year if cls.academic_year else None,
+            "is_active": cls.is_active,
+            "subjects": [
+                {"id": subject.id, "name": subject.name}
+                for subject in cls.subject_set.all()
+            ],
+            "timetable": [
+                {
+                    "id": schedule.id,
+                    "section": schedule.section,
+                    "day_of_week": schedule.day_of_week,
+                    "subject": schedule.subject.name if schedule.subject else "No Subject",
+                }
+                for schedule in cls.timetable.all()
+            ]
+        }
+        for cls in classes
+    ]
 
-    return JsonResponse({"message": "Academic Year added successfully"}, status=201)
+    return JsonResponse(classes_data, safe=False)
+
+def get_active_options(request):
+    try:
+        # Fetch active academic years
+        active_academic_years = AcademicYear.objects.filter(is_active=True).values("id", "year")
+        # Fetch active grades
+        active_grades = Grade.objects.values("id", "name")  # Assuming Grade does not have `is_active`
+        
+        return JsonResponse({
+            "academic_years": list(active_academic_years),
+            "grades": list(active_grades)
+        })
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+@csrf_exempt
+def create_class(request):
+    if request.method == "POST":
+        try:
+            # Parse the JSON payload
+            data = json.loads(request.body)
+            class_name = data.get("name")
+            academic_year_id = data.get("academic_year_id")
+            grade_id = data.get("grade_id")
+            
+            # Validate data
+            if not class_name or not academic_year_id or not grade_id:
+                return JsonResponse({"error": "All fields are required"}, status=400)
+
+            # Fetch related objects
+            academic_year = AcademicYear.objects.get(id=academic_year_id)
+            grade = Grade.objects.get(id=grade_id)
+
+            # Create the class
+            new_class = Class.objects.create(
+                name=class_name,
+                academic_year=academic_year,
+                grade=grade
+            )
+
+            return JsonResponse({
+                "message": "Class created successfully",
+                "class": {
+                    "id": new_class.id,
+                    "name": new_class.name,
+                    "academic_year": academic_year.year,
+                    "grade": grade.name
+                }
+            }, status=201)
+        except AcademicYear.DoesNotExist:
+            return JsonResponse({"error": "Invalid Academic Year"}, status=404)
+        except Grade.DoesNotExist:
+            return JsonResponse({"error": "Invalid Grade"}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+    else:
+        return JsonResponse({"error": "Invalid request method"}, status=405)
+
+def get_class_details(request, id):
+    try:
+        class_instance = Class.objects.get(id=id)
+        active_academic_years = AcademicYear.objects.filter(is_active=True).values("id", "year")
+        grades = Grade.objects.values("id", "name")
+
+        return JsonResponse({
+            "name": class_instance.name,
+            "academic_year": {"id": class_instance.academic_year.id, "year": class_instance.academic_year.year},
+            "grade": {"id": class_instance.grade.id, "name": class_instance.grade.name},
+            "active_academic_years": list(active_academic_years),
+            "grades": list(grades),
+        })
+    except Class.DoesNotExist:
+        return JsonResponse({"error": "Class not found"}, status=404)
+
+@csrf_exempt
+def update_class(request, id):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            class_instance = Class.objects.get(id=id)
+
+            class_instance.name = data.get("name")
+            class_instance.academic_year_id = data.get("academic_year_id")
+            class_instance.grade_id = data.get("grade_id")
+            class_instance.save()
+
+            return JsonResponse({"message": "Class updated successfully"})
+        except Class.DoesNotExist:
+            return JsonResponse({"error": "Class not found"}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+        
+@csrf_exempt
+def delete_class(request, id):
+    if request.method == "DELETE":
+        try:
+            class_instance = Class.objects.get(id=id)
+            class_instance.delete()
+            return JsonResponse({"message": "Class deleted successfully"})
+        except Class.DoesNotExist:
+            return JsonResponse({"error": "Class not found"}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+

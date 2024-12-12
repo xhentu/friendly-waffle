@@ -73,15 +73,19 @@ Staff Dashboard
         <li>
             <button onclick="toggleDropdown('academic-year-dropdown')">Manage Academic Year</button>
             <div id="academic-year-dropdown" class="dropdown-content">
-                <a onclick="getAcademicYears()">View Academic Year</a>
-                <a onclick="createAcademicYear()">Create Academic Years</a>
+                <a href="#" onclick="getAcademicYears()">View Academic Year</a>
+                <a href="#" onclick="createAcademicYear()">Create Academic Years</a>
             </div>
         </li>
         <li>
             <button onclick="toggleDropdown('classes-dropdown')">Manage Classes</button>
             <div id="classes-dropdown" class="dropdown-content">
-                <a href="#">Create Class</a>
-                <a href="#">View Classes</a>
+                <a href="#" onclick="viewClasses()">View Classes</a>
+                <a href="#" onclick="createClasses()">Create Classes</a>
+                <a href="#" onclick="getGrades()">View Grades</a>
+                <a href="#" onclick="addGrades()">Make Grades</a>
+                <a href="#" onclick="getSubjects()">Views Subjects</a>
+                <a href="#" onclick="addSubjects()">Create Subjects</a>
             </div>
         </li>
         <li>

@@ -257,3 +257,337 @@ function deleteAcademicYear(id) {
             alert("An error occurred while deleting the academic year.");
         });
 }
+
+function createAcademicYear() {
+    const mainContainer = document.getElementById("main");
+    mainContainer.innerHTML = `
+        <div class="card shadow-sm p-4">
+            <div class="card-header text-center bg-primary text-white">
+                <h3>Create Academic Year</h3>
+            </div>
+            <div class="card-body">
+                <form id="create-academic-year-form">
+                    <div class="mb-3">
+                        <label for="year" class="form-label">Academic Year</label>
+                        <input type="text" class="form-control" id="year" placeholder="Enter academic year" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="is_active" class="form-label">Active</label>
+                        <select class="form-select" id="is_active">
+                            <option value="true">Yes</option>
+                            <option value="false">No</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create</button>
+                    <button type="button" class="btn btn-secondary" onclick="getAcademicYears()">Cancel</button>
+                </form>
+            </div>
+        </div>
+    `;
+
+    document.getElementById("create-academic-year-form").addEventListener("submit", function (e) {
+        e.preventDefault();
+
+        const newYear = document.getElementById("year").value;
+        const isActive = document.getElementById("is_active").value === "true";
+
+        fetch('/academic-years/add/', {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ year: newYear, is_active: isActive }),
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("Failed to create academic year");
+                }
+                return response.json();
+            })
+            .then(() => {
+                getAcademicYears();
+            })
+            .catch(error => {
+                console.error("Error creating academic year:", error);
+            });
+    });
+}
+
+function viewClasses() {
+    const mainContainer = document.getElementById("main");
+    mainContainer.innerHTML = `
+        <div class="card shadow-sm p-4">
+            <div class="card-header text-center bg-primary text-white">
+                <h3>All Classes</h3>
+            </div>
+            <div class="card-body">
+                <table class="table table-striped" id="classes-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Class Name</th>
+                            <th>Grade</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="4" class="text-center">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+
+    fetch("/view-classes/")
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => { throw new Error(err.message); });
+            }
+            return response.json();
+        })
+        .then(classList => {
+            const tableBody = document.querySelector("#classes-table tbody");
+            tableBody.innerHTML = ""; // Clear loading state
+            classList.forEach((classItem, index) => {
+                tableBody.innerHTML += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${classItem.name}</td>
+                        <td>${classItem.grade}</td>
+                        <td>
+                            <button class="btn btn-sm btn-warning" onclick="editClass(${classItem.id}, '${classItem.name}', '${classItem.grade}')">Edit</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteClass(${classItem.id})">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        })
+        .catch(error => {
+            console.error("Error fetching classes:", error.message);
+            const tableBody = document.querySelector("#classes-table tbody");
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="text-center text-danger">Failed to load classes</td>
+                </tr>
+            `;
+        });
+}
+
+function createClasses() {
+    // Fetch active options for academic years and grades
+    fetch("/get-active-options/")
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("Failed to fetch active options");
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Construct the form dynamically with fetched data
+            const mainContainer = document.getElementById("main");
+            mainContainer.innerHTML = `
+                <div class="card shadow-sm p-4">
+                    <div class="card-header text-center bg-primary text-white">
+                        <h3>Create Class</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="create-class-form">
+                            <div class="mb-3">
+                                <label for="class-name" class="form-label">Class Name</label>
+                                <input type="text" class="form-control" id="class-name" placeholder="Enter class name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="academic-year" class="form-label">Academic Year</label>
+                                <select class="form-select" id="academic-year" required>
+                                    ${
+                                        data.academic_years.length
+                                            ? data.academic_years.map(
+                                                  year => `<option value="${year.id}">${year.year}</option>`
+                                              ).join("")
+                                            : `<option disabled>No Active Academic Year</option>`
+                                    }
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="grade" class="form-label">Grade</label>
+                                <select class="form-select" id="grade" required>
+                                    ${
+                                        data.grades.length
+                                            ? data.grades.map(
+                                                  grade => `<option value="${grade.id}">${grade.name}</option>`
+                                              ).join("")
+                                            : `<option disabled>No Active Grades</option>`
+                                    }
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Create Class</button>
+                        </form>
+                    </div>
+                </div>
+            `;
+
+            // Attach event listener for form submission
+            document.getElementById("create-class-form").addEventListener("submit", function (e) {
+                e.preventDefault();
+                const className = document.getElementById("class-name").value;
+                const academicYearId = document.getElementById("academic-year").value;
+                const gradeId = document.getElementById("grade").value;
+
+                fetch("/create-class/", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        name: className,
+                        academic_year_id: academicYearId,
+                        grade_id: gradeId,
+                    }),
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.json().then(err => { throw new Error(err.error); });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        alert("Class created successfully!");
+                        viewClasses(); // Redirect to class list or reload page
+                    })
+                    .catch(error => {
+                        console.error("Error creating class:", error.message);
+                        alert("Failed to create class: " + error.message);
+                    });
+            });
+        })
+        .catch(error => {
+            console.error("Error fetching active options:", error.message);
+            const mainContainer = document.getElementById("main");
+            mainContainer.innerHTML = `
+                <div class="alert alert-danger text-center">
+                    Failed to load active options: ${error.message}
+                </div>
+            `;
+        });
+}
+
+function editClass(classId) {
+    // Fetch the current class details to populate the form
+    fetch(`/get-class-details/${classId}/`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("Failed to fetch class details");
+            }
+            return response.json();
+        })
+        .then(classData => {
+            // Construct the edit form dynamically
+            const mainContainer = document.getElementById("main");
+            mainContainer.innerHTML = `
+                <div class="card shadow-sm p-4">
+                    <div class="card-header text-center bg-warning text-white">
+                        <h3>Edit Class</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="edit-class-form">
+                            <div class="mb-3">
+                                <label for="class-name" class="form-label">Class Name</label>
+                                <input type="text" class="form-control" id="class-name" value="${classData.name}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="academic-year" class="form-label">Academic Year</label>
+                                <select class="form-select" id="academic-year" required>
+                                    ${
+                                        classData.active_academic_years.map(ay => `
+                                            <option value="${ay.id}" ${ay.id === classData.academic_year.id ? "selected" : ""}>
+                                                ${ay.year}
+                                            </option>
+                                        `).join("")
+                                    }
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="grade" class="form-label">Grade</label>
+                                <select class="form-select" id="grade" required>
+                                    ${
+                                        classData.grades.map(grade => `
+                                            <option value="${grade.id}" ${grade.id === classData.grade.id ? "selected" : ""}>
+                                                ${grade.name}
+                                            </option>
+                                        `).join("")
+                                    }
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-warning">Update Class</button>
+                        </form>
+                    </div>
+                </div>
+            `;
+
+            // Attach event listener for form submission
+            document.getElementById("edit-class-form").addEventListener("submit", function (e) {
+                e.preventDefault();
+                const updatedClassName = document.getElementById("class-name").value;
+                const updatedAcademicYearId = document.getElementById("academic-year").value;
+                const updatedGradeId = document.getElementById("grade").value;
+
+                fetch(`/update-class/${classId}/`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        name: updatedClassName,
+                        academic_year_id: updatedAcademicYearId,
+                        grade_id: updatedGradeId,
+                    }),
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.json().then(err => { throw new Error(err.error); });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        alert("Class updated successfully!");
+                        viewClasses(); // Refresh the class list
+                    })
+                    .catch(error => {
+                        console.error("Error updating class:", error.message);
+                        alert("Failed to update class: " + error.message);
+                    });
+            });
+        })
+        .catch(error => {
+            console.error("Error fetching class details:", error.message);
+            alert("Failed to load class details: " + error.message);
+        });
+}
+
+function deleteClass(classId) {
+    if (confirm("Are you sure you want to delete this class? This action cannot be undone.")) {
+        fetch(`/delete-class/${classId}/`, {
+            method: "DELETE",
+            headers: {
+                "Content-Type": "application/json",
+            },
+        })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw new Error(err.error); });
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert("Class deleted successfully!");
+                viewClasses(); // Refresh the class list
+            })
+            .catch(error => {
+                console.error("Error deleting class:", error.message);
+                alert("Failed to delete class: " + error.message);
+            });
+    }
+}
+
