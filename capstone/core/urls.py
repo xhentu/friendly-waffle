@@ -17,13 +17,18 @@ urlpatterns = [
     path('getAcademicYears/', views.getAcademicYears, name='getAcademicYears'),
     path('academic-years/add/', views.create_academic_year, name='create-academic-year'),
     path('academic-years/<int:id>/', views.academic_year_detail, name='academic_year_detail'),
-    path('view-classes/', views.get_classes_view, name='view-classes'),
 
+    path('view-classes/', views.get_classes_view, name='view-classes'),
     path('get-active-options/', views.get_active_options, name='get-active-options'),
     path('create-class/', views.create_class, name='create-class'),
-    path('editClass/<int:id>/', views.update_class, name='editClass'),
+    path('update-class/<int:id>/', views.update_class, name='editClass'),
     path('get-class-details/<int:id>/', views.get_class_details, name='get-class-details'),
-    path('deleteClass', views.delete_class, name="deleteClass"),
+    path('delete-class/<int:id>/', views.delete_class, name="deleteClass"),
+
+    path('get-grades/', views.get_grades, name="get-grades"),
+    path('create-grade/', views.create_grade, name="create-grade"),
+    path('edit-grade/<int:id>/', views.edit_grade, name="edit-grade"),
+    path('delete-grade/<int:id>/', views.delete_grade, name="delete-grade"),
     # CRUD for Students
     # path('students/', views.student_list, name='student-list'),
     # path('students/<int:pk>/', views.student_detail, name='student-detail'),

@@ -322,3 +322,60 @@ def delete_class(request, id):
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
 
+def get_grades(request):
+    """
+    Returns a JSON response with all grades.
+    """
+    try:
+        grades = Grade.objects.all().values("id", "name")
+        return JsonResponse({"grades": list(grades)}, status=200)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+@csrf_exempt
+def edit_grade(request, id):
+    """
+    Updates a grade with the given ID.
+    """
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            grade = Grade.objects.get(id=id)
+            grade.name = data.get("name", grade.name)
+            grade.save()
+            return JsonResponse({"message": "Grade updated successfully"}, status=200)
+        except Grade.DoesNotExist:
+            return JsonResponse({"error": "Grade not found"}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+    return JsonResponse({"error": "Invalid request method"}, status=400)
+
+@csrf_exempt
+def delete_grade(request, id):
+    """
+    Deletes a grade with the given ID.
+    """
+    if request.method == "DELETE":
+        try:
+            grade = Grade.objects.get(id=id)
+            grade.delete()
+            return JsonResponse({"message": "Grade deleted successfully"}, status=200)
+        except Grade.DoesNotExist:
+            return JsonResponse({"error": "Grade not found"}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+    return JsonResponse({"error": "Invalid request method"}, status=400)
+
+@csrf_exempt
+def create_grade(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            grade_name = data.get("name")
+            if not grade_name:
+                return JsonResponse({"error": "Grade name is required"}, status=400)
+            grade = Grade.objects.create(name=grade_name)
+            return JsonResponse({"message": "Grade created successfully", "grade": {"id": grade.id, "name": grade.name}}, status=201)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+    return JsonResponse({"error": "Invalid request method"}, status=400)

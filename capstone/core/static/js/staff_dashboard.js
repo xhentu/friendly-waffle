@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // Add any initialization logic here, if needed
+    console.log('loading DOM');
 });
 
 // Function to handle profile data fetching and rendering
@@ -591,3 +592,143 @@ function deleteClass(classId) {
     }
 }
 
+function getGrades() {
+    // Fetch grades from the server
+    fetch("/get-grades/")
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("Failed to fetch grades");
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Construct the grades table dynamically
+            const mainContainer = document.getElementById("main");
+            mainContainer.innerHTML = `
+            <div class="card shadow-sm p-4">
+                <div class="card-header text-center bg-primary text-white">
+                <h3>Grades</h3>
+                </div>
+            <div class="card-body">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Grade Name</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${
+                        data.grades.length
+                            ? data.grades.map((grade, index) => `
+                                <tr>
+                                    <td>${index + 1}</td>
+                                    <td>${grade.name}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-warning" onclick="editGrade(${grade.id}, '${grade.name}')">Edit</button>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteGrade(${grade.id})">Delete</button>
+                                    </td>
+                                </tr>
+                            `).join("")
+                            : `<tr><td colspan="3" class="text-center">No Grades Available</td></tr>`
+                    }
+                </tbody>
+            </table>
+            </div>
+            </div>
+        `;
+        })
+        .catch(error => {
+            console.error("Error fetching grades:", error.message);
+            const mainContainer = document.getElementById("main");
+            mainContainer.innerHTML = `
+                <div class="alert alert-danger text-center">
+                    Failed to load grades: ${error.message}
+                </div>
+            `;
+        });
+}
+
+function editGrade(gradeId, currentName) {
+    const newName = prompt("Enter the new name for the grade:", currentName);
+    if (newName) {
+        fetch(`/edit-grade/${gradeId}/`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ name: newName }),
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("Failed to update grade");
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert(data.message);
+                getGrades(); // Refresh the grade list
+            })
+            .catch(error => {
+                console.error("Error updating grade:", error.message);
+                alert("Failed to update grade: " + error.message);
+            });
+    }
+}
+
+function deleteGrade(gradeId) {
+    if (confirm("Are you sure you want to delete this grade? This action cannot be undone.")) {
+        fetch(`/delete-grade/${gradeId}/`, {
+            method: "DELETE",
+            headers: {
+                "Content-Type": "application/json",
+            },
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("Failed to delete grade");
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert(data.message);
+                getGrades(); // Refresh the grade list
+            })
+            .catch(error => {
+                console.error("Error deleting grade:", error.message);
+                alert("Failed to delete grade: " + error.message);
+            });
+    }
+}
+
+// function createGrades() {
+//     const gradeName = prompt("Enter the name of the new grade:");
+//     if (gradeName) {
+//         fetch("/create-grade/", {
+//             method: "POST",
+//             headers: {
+//                 "Content-Type": "application/json",
+//             },
+//             body: JSON.stringify({ name: gradeName }),
+//         })
+//             .then(response => {
+//                 if (!response.ok) {
+//                     throw new Error("Failed to create grade");
+//                 }
+//                 return response.json();
+//             })
+//             .then(data => {
+//                 alert(data.message);
+//                 getGrade(); // Refresh the grade list
+//             })
+//             .catch(error => {
+//                 console.error("Error creating grade:", error.message);
+//                 alert("Failed to create grade: " + error.message);
+//             });
+//     }
+// }
+
+function createGrades() {
+    console.log('creating grade');
+}
