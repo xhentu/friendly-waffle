@@ -58,7 +58,6 @@ def sign_in(request):
 
     return render(request, 'core/sign_in.html')
 
-
 @login_required(login_url='/core/sign-in/')
 def student_dashboard(request):
     user = request.user
@@ -150,7 +149,6 @@ def getAcademicYears(request):
     academic_years = AcademicYear.objects.all().values('id', 'year', 'is_active')
     print("Academic years data:", list(academic_years))  # Debug log
     return JsonResponse(list(academic_years), safe=False)
-
 
 @csrf_exempt
 @require_http_methods(["PUT", "DELETE"])
@@ -401,37 +399,72 @@ def get_subjects(request):
             return JsonResponse({"error": str(e)}, status=500)
     return JsonResponse({"error": "Invalid request method"}, status=400)
 
-@csrf_exempt
+@csrf_exempt  # Only if you're not using CSRF tokens
 def create_subject(request):
     if request.method == "POST":
         try:
+            # Parse the JSON payload
             data = json.loads(request.body)
-            name = data.get("name")
+            subject_name = data.get("name")
             grade_id = data.get("grade_id")
             academic_year_id = data.get("academic_year_id")
             class_ids = data.get("class_ids", [])
-            is_active = data.get("is_active", True)
 
-            if not name or not grade_id:
-                return JsonResponse({"error": "Subject name and grade are required"}, status=400)
+            # Validate required fields
+            if not subject_name or not grade_id or not academic_year_id:
+                return JsonResponse({"error": "All fields are required"}, status=400)
 
+            # Fetch related objects
             grade = Grade.objects.get(id=grade_id)
-            academic_year = AcademicYear.objects.get(id=academic_year_id) if academic_year_id else None
+            academic_year = AcademicYear.objects.get(id=academic_year_id)
+            classes = Class.objects.filter(id__in=class_ids)
 
-            subject = Subject.objects.create(
-                name=name, grade=grade, academic_year=academic_year, is_active=is_active
+            # Create the subject
+            new_subject = Subject.objects.create(
+                name=subject_name,
+                grade=grade,
+                academic_year=academic_year,
             )
-            if class_ids:
-                subject.classes.set(Class.objects.filter(id__in=class_ids))
 
-            return JsonResponse({"message": "Subject created successfully"}, status=201)
+            # Assign classes to the subject
+            new_subject.classes.set(classes)
+
+            return JsonResponse({
+                "message": "Subject created successfully",
+                "subject": {
+                    "id": new_subject.id,
+                    "name": new_subject.name,
+                    "grade": grade.name,
+                    "academic_year": academic_year.year,
+                    "classes": [{"id": cls.id, "name": cls.name} for cls in classes]
+                }
+            }, status=201)
+
         except Grade.DoesNotExist:
-            return JsonResponse({"error": "Grade not found"}, status=404)
+            return JsonResponse({"error": "Invalid grade"}, status=404)
         except AcademicYear.DoesNotExist:
-            return JsonResponse({"error": "Academic year not found"}, status=404)
+            return JsonResponse({"error": "Invalid academic year"}, status=404)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
-    return JsonResponse({"error": "Invalid request method"}, status=400)
+    else:
+        return JsonResponse({"error": "Invalid request method"}, status=405)
+    
+def get_active_subject_options(request):
+    try:
+        # Fetch active grades
+        active_grades = Grade.objects.all().values("id", "name")
+
+        # Fetch active academic years
+        active_academic_years = AcademicYear.objects.filter(is_active=True).values("id", "year")
+
+        # Return data for the dropdowns
+        return JsonResponse({
+            "grades": list(active_grades),
+            "academic_years": list(active_academic_years)
+        }, status=200)
+
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
 
 @csrf_exempt
 def edit_subject(request, id):

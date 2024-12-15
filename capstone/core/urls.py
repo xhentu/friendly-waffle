@@ -31,38 +31,7 @@ urlpatterns = [
     path('delete-grade/<int:id>/', views.delete_grade, name="delete-grade"),
 
     path('get-subjects/', views.get_subjects, name="getSubjects"),
-    # CRUD for Students
-    # path('students/', views.student_list, name='student-list'),
-    # path('students/<int:pk>/', views.student_detail, name='student-detail'),
-    # path('students/create/', views.student_create, name='student-create'),
-    # path('students/<int:pk>/edit/', views.student_edit, name='student-edit'),
-    # path('students/<int:pk>/delete/', views.student_delete, name='student-delete'),
+    path('create-subject/', views.create_subject, name='create-subject'),
+    path('get-active-subject-options/', views.get_active_subject_options, name='get-active-subject-options'),
 
-    # CRUD for Classes
-    # path('classes/', views.class_list, name='class-list'),
-    # path('classes/<int:pk>/', views.class_detail, name='class-detail'),
-    # path('classes/create/', views.class_create, name='class-create'),
-    # path('classes/<int:pk>/edit/', views.class_edit, name='class-edit'),
-    # path('classes/<int:pk>/delete/', views.class_delete, name='class-delete'),
-
-    # CRUD for Subjects
-    # path('subjects/', views.subject_list, name='subject-list'),
-    # path('subjects/<int:pk>/', views.subject_detail, name='subject-detail'),
-    # path('subjects/create/', views.subject_create, name='subject-create'),
-    # path('subjects/<int:pk>/edit/', views.subject_edit, name='subject-edit'),
-    # path('subjects/<int:pk>/delete/', views.subject_delete, name='subject-delete'),
-
-    # CRUD for Teachers
-    # path('teachers/', views.teacher_list, name='teacher-list'),
-    # path('teachers/<int:pk>/', views.teacher_detail, name='teacher-detail'),
-    # path('teachers/create/', views.teacher_create, name='teacher-create'),
-    # path('teachers/<int:pk>/edit/', views.teacher_edit, name='teacher-edit'),
-    # path('teachers/<int:pk>/delete/', views.teacher_delete, name='teacher-delete'),
-
-    # CRUD for Notifications
-    # path('notifications/', views.notification_list, name='notification-list'),
-    # path('notifications/<int:pk>/', views.notification_detail, name='notification-detail'),
-    # path('notifications/create/', views.notification_create, name='notification-create'),
-    # path('notifications/<int:pk>/edit/', views.notification_edit, name='notification-edit'),
-    # path('notifications/<int:pk>/delete/', views.notification_delete, name='notification-delete'),
 ]

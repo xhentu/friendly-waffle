@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // Add any initialization logic here, if needed
-    console.log('loading DOM');
+
 });
 
 // Function to handle profile data fetching and rendering
@@ -741,7 +741,7 @@ function getSubjects() {
                             <h3>Subjects</h3>
                         </div>
                         <div class="card-body">
-                            <button class="btn btn-success mb-3" onclick="openCreateSubjectForm()">Create Subject</button>
+                            <button class="btn btn-success mb-3" onclick="createSubject()">Create Subject</button>
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
@@ -779,4 +779,105 @@ function getSubjects() {
             }
         })
         .catch(error => console.error("Error fetching subjects:", error));
+}
+
+function createSubject() {
+    // Fetch active options for academic years, grades, and classes
+    fetch("/get-active-subject-options/") // Adjust this endpoint as needed
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("Failed to fetch active options");
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Construct the form dynamically with fetched data
+            const mainContainer = document.getElementById("main");
+            mainContainer.innerHTML = `
+                <div class="card shadow-sm p-4">
+                    <div class="card-header text-center bg-primary text-white">
+                        <h3>Create Subject</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="create-subject-form">
+                            <div class="mb-3">
+                                <label for="subject-name" class="form-label">Subject Name</label>
+                                <input type="text" class="form-control" id="subject-name" placeholder="Enter subject name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="grade" class="form-label">Grade</label>
+                                <select class="form-select" id="grade" required>
+                                    ${
+                                        data.grades.length
+                                            ? data.grades.map(
+                                                  grade => `<option value="${grade.id}">${grade.name}</option>`
+                                              ).join("")
+                                            : `<option disabled>No Active Grades</option>`
+                                    }
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="academic-year" class="form-label">Academic Year</label>
+                                <select class="form-select" id="academic-year" required>
+                                    ${
+                                        data.academic_years.length
+                                            ? data.academic_years.map(
+                                                  year => `<option value="${year.id}">${year.year}</option>`
+                                              ).join("")
+                                            : `<option disabled>No Active Academic Years</option>`
+                                    }
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Create Subject</button>
+                        </form>
+                    </div>
+                </div>
+            `;
+
+            // Attach event listener for form submission
+            document.getElementById("create-subject-form").addEventListener("submit", function (e) {
+                e.preventDefault();
+            
+                const subjectName = document.getElementById("subject-name").value;
+                const gradeId = document.getElementById("grade").value;
+                const academicYearId = document.getElementById("academic-year").value;
+                const classIds = Array.from(document.querySelectorAll("#classes option:checked")).map(opt => opt.value);
+            
+                fetch("/create-subject/", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        name: subjectName,
+                        grade_id: gradeId,
+                        academic_year_id: academicYearId,
+                        class_ids: classIds,
+                    }),
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.json().then(err => { throw new Error(err.error); });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        alert("Subject created successfully!");
+                        viewSubjects(); // Refresh the subject list
+                    })
+                    .catch(error => {
+                        console.error("Error creating subject:", error.message);
+                        alert("Failed to create subject: " + error.message);
+                    });
+            });
+        })            
+        .catch(error => {
+            console.error("Error fetching active options:", error.message);
+            const mainContainer = document.getElementById("main");
+            mainContainer.innerHTML = `
+                <div class="alert alert-danger text-center">
+                    Failed to load active options: ${error.message}
+                </div>
+            `;
+        });
 }
