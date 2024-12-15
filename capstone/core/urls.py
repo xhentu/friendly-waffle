@@ -29,6 +29,8 @@ urlpatterns = [
     path('create-grade/', views.create_grade, name="create-grade"),
     path('edit-grade/<int:id>/', views.edit_grade, name="edit-grade"),
     path('delete-grade/<int:id>/', views.delete_grade, name="delete-grade"),
+
+    path('get-subjects/', views.get_subjects, name="getSubjects"),
     # CRUD for Students
     # path('students/', views.student_list, name='student-list'),
     # path('students/<int:pk>/', views.student_detail, name='student-detail'),

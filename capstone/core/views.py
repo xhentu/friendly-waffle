@@ -379,3 +379,97 @@ def create_grade(request):
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
     return JsonResponse({"error": "Invalid request method"}, status=400)
+
+@csrf_exempt
+def get_subjects(request):
+    if request.method == "GET":
+        try:
+            subjects = Subject.objects.select_related("grade", "academic_year").prefetch_related("classes").all()
+            subject_list = [
+                {
+                    "id": subject.id,
+                    "name": subject.name,
+                    "grade": subject.grade.name,
+                    "academic_year": subject.academic_year.year if subject.academic_year else None,
+                    "classes": [cls.name for cls in subject.classes.all()],
+                    "is_active": subject.is_active,
+                }
+                for subject in subjects
+            ]
+            return JsonResponse({"subjects": subject_list}, status=200)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+    return JsonResponse({"error": "Invalid request method"}, status=400)
+
+@csrf_exempt
+def create_subject(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            name = data.get("name")
+            grade_id = data.get("grade_id")
+            academic_year_id = data.get("academic_year_id")
+            class_ids = data.get("class_ids", [])
+            is_active = data.get("is_active", True)
+
+            if not name or not grade_id:
+                return JsonResponse({"error": "Subject name and grade are required"}, status=400)
+
+            grade = Grade.objects.get(id=grade_id)
+            academic_year = AcademicYear.objects.get(id=academic_year_id) if academic_year_id else None
+
+            subject = Subject.objects.create(
+                name=name, grade=grade, academic_year=academic_year, is_active=is_active
+            )
+            if class_ids:
+                subject.classes.set(Class.objects.filter(id__in=class_ids))
+
+            return JsonResponse({"message": "Subject created successfully"}, status=201)
+        except Grade.DoesNotExist:
+            return JsonResponse({"error": "Grade not found"}, status=404)
+        except AcademicYear.DoesNotExist:
+            return JsonResponse({"error": "Academic year not found"}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+    return JsonResponse({"error": "Invalid request method"}, status=400)
+
+@csrf_exempt
+def edit_subject(request, id):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            subject = Subject.objects.get(id=id)
+
+            subject.name = data.get("name", subject.name)
+            if "grade_id" in data:
+                subject.grade = Grade.objects.get(id=data["grade_id"])
+            if "academic_year_id" in data:
+                subject.academic_year = AcademicYear.objects.get(id=data["academic_year_id"])
+            subject.is_active = data.get("is_active", subject.is_active)
+            if "class_ids" in data:
+                subject.classes.set(Class.objects.filter(id__in=data["class_ids"]))
+            subject.save()
+
+            return JsonResponse({"message": "Subject updated successfully"}, status=200)
+        except Subject.DoesNotExist:
+            return JsonResponse({"error": "Subject not found"}, status=404)
+        except Grade.DoesNotExist:
+            return JsonResponse({"error": "Grade not found"}, status=404)
+        except AcademicYear.DoesNotExist:
+            return JsonResponse({"error": "Academic year not found"}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+    return JsonResponse({"error": "Invalid request method"}, status=400)
+
+@csrf_exempt
+def delete_subject(request, id):
+    if request.method == "DELETE":
+        try:
+            subject = Subject.objects.get(id=id)
+            subject.delete()
+            return JsonResponse({"message": "Subject deleted successfully"}, status=200)
+        except Subject.DoesNotExist:
+            return JsonResponse({"error": "Subject not found"}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+    return JsonResponse({"error": "Invalid request method"}, status=400)

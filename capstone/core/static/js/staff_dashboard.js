@@ -702,33 +702,81 @@ function deleteGrade(gradeId) {
     }
 }
 
-// function createGrades() {
-//     const gradeName = prompt("Enter the name of the new grade:");
-//     if (gradeName) {
-//         fetch("/create-grade/", {
-//             method: "POST",
-//             headers: {
-//                 "Content-Type": "application/json",
-//             },
-//             body: JSON.stringify({ name: gradeName }),
-//         })
-//             .then(response => {
-//                 if (!response.ok) {
-//                     throw new Error("Failed to create grade");
-//                 }
-//                 return response.json();
-//             })
-//             .then(data => {
-//                 alert(data.message);
-//                 getGrade(); // Refresh the grade list
-//             })
-//             .catch(error => {
-//                 console.error("Error creating grade:", error.message);
-//                 alert("Failed to create grade: " + error.message);
-//             });
-//     }
-// }
-
 function createGrades() {
-    console.log('creating grade');
+    const gradeName = prompt("Enter the name of the new grade:");
+    if (gradeName) {
+        fetch("/create-grade/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ name: gradeName }),
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("Failed to create grade");
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert(data.message);
+                getGrades(); // Refresh the grade list
+            })
+            .catch(error => {
+                console.error("Error creating grade:", error.message);
+                alert("Failed to create grade: " + error.message);
+            });
+    }
+}
+
+function getSubjects() {
+    fetch("/get-subjects/")
+        .then(response => response.json())
+        .then(data => {
+            if (data.subjects) {
+                const mainContainer = document.getElementById("main");
+                mainContainer.innerHTML = `
+                    <div class="card shadow-sm p-4">
+                        <div class="card-header text-center bg-primary text-white">
+                            <h3>Subjects</h3>
+                        </div>
+                        <div class="card-body">
+                            <button class="btn btn-success mb-3" onclick="openCreateSubjectForm()">Create Subject</button>
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Name</th>
+                                        <th>Grade</th>
+                                        <th>Academic Year</th>
+                                        <th>Classes</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${data.subjects.map((subject, index) => `
+                                        <tr>
+                                            <td>${index + 1}</td>
+                                            <td>${subject.name}</td>
+                                            <td>${subject.grade}</td>
+                                            <td>${subject.academic_year || "N/A"}</td>
+                                            <td>${subject.classes.join(", ") || "N/A"}</td>
+                                            <td>${subject.is_active ? "Active" : "Inactive"}</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-warning" onclick="editSubject(${subject.id})">Edit</button>
+                                                <button class="btn btn-sm btn-danger" onclick="deleteSubject(${subject.id})">Delete</button>
+                                            </td>
+                                        </tr>
+                                    `).join("")}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            } else {
+                alert("Failed to load subjects");
+            }
+        })
+        .catch(error => console.error("Error fetching subjects:", error));
 }
