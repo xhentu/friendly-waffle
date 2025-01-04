@@ -147,7 +147,6 @@ def profile(request):
 def getAcademicYears(request):
     print("getAcademicYears endpoint accessed")  # Debug log
     academic_years = AcademicYear.objects.all().values('id', 'year', 'is_active')
-    print("Academic years data:", list(academic_years))  # Debug log
     return JsonResponse(list(academic_years), safe=False)
 
 @csrf_exempt
@@ -399,25 +398,44 @@ def get_subjects(request):
             return JsonResponse({"error": str(e)}, status=500)
     return JsonResponse({"error": "Invalid request method"}, status=400)
 
-@csrf_exempt  # Only if you're not using CSRF tokens
+@csrf_exempt
 def create_subject(request):
     if request.method == "POST":
         try:
-            # Parse the JSON payload
-            data = json.loads(request.body)
+            # Parse and validate input
+            try:
+                data = json.loads(request.body)
+            except json.JSONDecodeError:
+                return JsonResponse({"error": "Invalid JSON input"}, status=400)
+
             subject_name = data.get("name")
             grade_id = data.get("grade_id")
             academic_year_id = data.get("academic_year_id")
             class_ids = data.get("class_ids", [])
 
             # Validate required fields
-            if not subject_name or not grade_id or not academic_year_id:
-                return JsonResponse({"error": "All fields are required"}, status=400)
+            required_fields = ["name", "grade_id", "academic_year_id"]
+            missing_fields = [field for field in required_fields if not data.get(field)]
+            if missing_fields:
+                return JsonResponse({"error": f"Missing required fields: {', '.join(missing_fields)}"}, status=400)
 
             # Fetch related objects
-            grade = Grade.objects.get(id=grade_id)
-            academic_year = AcademicYear.objects.get(id=academic_year_id)
-            classes = Class.objects.filter(id__in=class_ids)
+            grade = get_object_or_404(Grade, id=grade_id)
+            academic_year = get_object_or_404(AcademicYear, id=academic_year_id)
+
+            # Validate class IDs
+            valid_classes = Class.objects.filter(id__in=class_ids)
+            if len(valid_classes) != len(class_ids):
+                return JsonResponse({"error": "One or more class IDs are invalid."}, status=400)
+
+            # Check for existing subject
+            existing_subject = Subject.objects.filter(
+                name=subject_name,
+                grade=grade,
+                academic_year=academic_year,
+            ).first()
+            if existing_subject:
+                return JsonResponse({"error": "A subject with the same name, grade, and academic year already exists."}, status=400)
 
             # Create the subject
             new_subject = Subject.objects.create(
@@ -427,7 +445,7 @@ def create_subject(request):
             )
 
             # Assign classes to the subject
-            new_subject.classes.set(classes)
+            new_subject.classes.set(valid_classes)
 
             return JsonResponse({
                 "message": "Subject created successfully",
@@ -436,7 +454,7 @@ def create_subject(request):
                     "name": new_subject.name,
                     "grade": grade.name,
                     "academic_year": academic_year.year,
-                    "classes": [{"id": cls.id, "name": cls.name} for cls in classes]
+                    "classes": [{"id": cls.id, "name": cls.name} for cls in valid_classes]
                 }
             }, status=201)
 
@@ -446,9 +464,11 @@ def create_subject(request):
             return JsonResponse({"error": "Invalid academic year"}, status=404)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
+
     else:
         return JsonResponse({"error": "Invalid request method"}, status=405)
     
+@csrf_exempt
 def get_active_subject_options(request):
     try:
         # Fetch active grades
@@ -457,52 +477,253 @@ def get_active_subject_options(request):
         # Fetch active academic years
         active_academic_years = AcademicYear.objects.filter(is_active=True).values("id", "year")
 
-        # Return data for the dropdowns
         return JsonResponse({
             "grades": list(active_grades),
             "academic_years": list(active_academic_years)
         }, status=200)
-
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
 
 @csrf_exempt
-def edit_subject(request, id):
+def get_classes_for_grade_and_year(request):
+    if request.method == "GET":
+        grade_id = request.GET.get("grade_id")
+        academic_year_id = request.GET.get("academic_year_id")
+        try:
+            # Fetch available classes for the selected grade and academic year
+            classes = Class.objects.filter(
+                grade_id=grade_id,
+                academic_year_id=academic_year_id
+            ).values("id", "name")
+
+            return JsonResponse({"classes": list(classes)}, status=200)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+    else:
+        return JsonResponse({"error": "Invalid request method"}, status=405)
+
+@csrf_exempt
+def edit_subject(request, subject_id):
     if request.method == "POST":
         try:
-            data = json.loads(request.body)
-            subject = Subject.objects.get(id=id)
+            data = json.loads(request.body)  # Parse the incoming JSON payload
+            
+            subject = Subject.objects.get(pk=subject_id)
+            grade = Grade.objects.get(pk=data["grade_id"])
+            academic_year = AcademicYear.objects.get(pk=data["academic_year_id"])
+            classes = Class.objects.filter(id__in=data["class_ids"])
 
-            subject.name = data.get("name", subject.name)
-            if "grade_id" in data:
-                subject.grade = Grade.objects.get(id=data["grade_id"])
-            if "academic_year_id" in data:
-                subject.academic_year = AcademicYear.objects.get(id=data["academic_year_id"])
-            subject.is_active = data.get("is_active", subject.is_active)
-            if "class_ids" in data:
-                subject.classes.set(Class.objects.filter(id__in=data["class_ids"]))
+            # Update the subject fields
+            subject.name = data["name"]
+            subject.grade = grade
+            subject.academic_year = academic_year
+            subject.is_active = data["is_active"]
             subject.save()
 
-            return JsonResponse({"message": "Subject updated successfully"}, status=200)
+            # Update the many-to-many relationship with classes
+            subject.classes.set(classes)
+            subject.save()
+
+            return JsonResponse({"success": "Subject updated successfully!"})
         except Subject.DoesNotExist:
             return JsonResponse({"error": "Subject not found"}, status=404)
         except Grade.DoesNotExist:
             return JsonResponse({"error": "Grade not found"}, status=404)
         except AcademicYear.DoesNotExist:
-            return JsonResponse({"error": "Academic year not found"}, status=404)
+            return JsonResponse({"error": "Academic Year not found"}, status=404)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
     return JsonResponse({"error": "Invalid request method"}, status=400)
 
 @csrf_exempt
-def delete_subject(request, id):
+def delete_subject(request, subject_id):
     if request.method == "DELETE":
         try:
-            subject = Subject.objects.get(id=id)
+            subject = Subject.objects.get(pk=subject_id)
             subject.delete()
-            return JsonResponse({"message": "Subject deleted successfully"}, status=200)
+            return JsonResponse({"success": "Subject deleted successfully!"})
         except Subject.DoesNotExist:
             return JsonResponse({"error": "Subject not found"}, status=404)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
     return JsonResponse({"error": "Invalid request method"}, status=400)
+
+def get_subject_details(request, subject_id):
+    try:
+        subject = Subject.objects.get(pk=subject_id)
+        grades = Grade.objects.all()
+        academic_years = AcademicYear.objects.all()
+        classes = Class.objects.filter(grade=subject.grade)
+
+        response = {
+            "id": subject.id,
+            "name": subject.name,
+            "grade": {"id": subject.grade.id, "name": subject.grade.name},
+            "grades": [{"id": g.id, "name": g.name} for g in grades],
+            "academic_year": {"id": subject.academic_year.id, "year": subject.academic_year.year},
+            "academic_years": [{"id": ay.id, "year": ay.year} for ay in academic_years],
+            "classes": [{"id": c.id, "name": c.name} for c in classes],
+            "selected_classes": [c.id for c in subject.classes.all()],
+            "is_active": subject.is_active,
+        }
+        return JsonResponse(response)
+    except Subject.DoesNotExist:
+        return JsonResponse({"error": "Subject not found"}, status=404)
+
+def get_users(request):
+    if request.method == "GET":
+        users = CustomUser.objects.all().values(
+            "id", "username", "role", "email", "phone_number", "gender"
+        )
+        return JsonResponse(list(users), safe=False)
+    return JsonResponse({"error": "Invalid request method"}, status=400)
+
+def user_profile(request, user_id):
+    # Placeholder logic for the user profile
+    return render(request, "core/user_profile.html", {"user_id": user_id})
+
+@csrf_exempt
+def create_user(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+
+            # Create user
+            user = CustomUser.objects.create_user(
+                username=data["username"],
+                email=data.get("email"),
+                password=data["password"],
+                role=data["role"],
+                nrc_no=data.get("nrc_no"),
+                gender=data.get("gender"),
+                religion=data.get("religion"),
+                phone_number=data.get("phone_number"),
+                address=data.get("address"),
+                date_of_birth=data.get("date_of_birth"),
+            )
+
+            # Handle role-specific logic
+            if user.role == "staff":
+                StaffProfile.objects.create(user=user, salary=data.get("salary"))
+            elif user.role == "teacher":
+                TeacherProfile.objects.create(user=user, salary=data.get("salary"))
+            elif user.role == "student":
+                StudentProfile.objects.create(user=user)  # No grade reference
+            elif user.role == "parent":
+                parent = ParentProfile.objects.create(user=user)
+                parent.students.set(data.get("linked_students", []))
+
+            return JsonResponse({"success": True})
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)})
+    return JsonResponse({"success": False, "error": "Invalid request method"})
+
+def fetch_grades(request):
+    grades = Grade.objects.values("id", "name")
+    return JsonResponse(list(grades), safe=False)
+
+def fetch_students_grouped_by_grade(request):
+    enrollments = StudentEnrollment.objects.select_related("student", "grade")
+    grouped_students = {}
+
+    for enrollment in enrollments:
+        grade_name = enrollment.grade.name
+        if grade_name not in grouped_students:
+            grouped_students[grade_name] = []
+        grouped_students[grade_name].append({
+            "id": enrollment.student.user.id,
+            "username": enrollment.student.user.username,
+        })
+
+    return JsonResponse(grouped_students)
+
+
+    classes = Class.objects.filter(grade_id=grade_id, academic_year_id=academic_year_id).values('id', 'name')
+    return JsonResponse(list(classes), safe=False)
+
+def fetch_academic_years(request):
+    academic_years = AcademicYear.objects.values("id", "year", "is_active")
+    return JsonResponse(list(academic_years), safe=False)
+
+def fetch_all_students(request):
+    """
+    Fetch all students with their enrollment status, grade, and class.
+    """
+    enrolled_students = StudentEnrollment.objects.select_related(
+        "grade", "class_assigned", "academic_year"
+    ).values(
+        "student_id", 
+        "grade__name", 
+        "class_assigned__name"
+    )
+
+    enrolled_dict = {enrollment["student_id"]: enrollment for enrollment in enrolled_students}
+
+    students = StudentProfile.objects.select_related("user").values(
+        "id", 
+        "user__username"
+    )
+
+    # Add grade and class info to each student
+    students_with_status = []
+    for student in students:
+        student_id = student["id"]
+        enrollment = enrolled_dict.get(student_id, {})
+        students_with_status.append({
+            "id": student_id,
+            "username": student["user__username"],
+            "grade": enrollment.get("grade__name", None),
+            "class": enrollment.get("class_assigned__name", None),
+            "is_enrolled": bool(enrollment),
+        })
+
+    return JsonResponse(students_with_status, safe=False)
+
+def fetch_classes_for_grade(request, grade_id, academic_year_id):
+    classes = Class.objects.filter(grade_id=grade_id, academic_year_id=academic_year_id).values("id", "name")
+    return JsonResponse(list(classes), safe=False)
+
+@csrf_exempt
+def enroll_student(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            student = StudentProfile.objects.get(id=data["student_id"])
+            academic_year = AcademicYear.objects.get(id=data["academic_year_id"])
+            grade = Grade.objects.get(id=data["grade_id"])
+            class_assigned = Class.objects.get(id=data["class_id"])
+
+            StudentEnrollment.objects.create(
+                student=student,
+                academic_year=academic_year,
+                grade=grade,
+                class_assigned=class_assigned,
+            )
+            return JsonResponse({"success": True, "message": "Student enrolled successfully."})
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)})
+    return JsonResponse({"success": False, "error": "Invalid request method."})
+
+def get_enrollment_details(request, student_id):
+    """
+    Fetch details for a student's current enrollment and dropdown options.
+    """
+    student = get_object_or_404(StudentProfile, id=student_id)
+    enrollment = StudentEnrollment.objects.filter(student=student).select_related(
+        "academic_year", "grade", "class_assigned"
+    ).first()
+
+    academic_years = AcademicYear.objects.values("id", "year")
+    grades = Grade.objects.values("id", "name")
+    classes = Class.objects.filter(
+        grade=enrollment.grade if enrollment else None
+    ).values("id", "name") if enrollment else []
+
+    return JsonResponse({
+        "academic_years": list(academic_years),
+        "grades": list(grades),
+        "classes": list(classes),
+        "current_academic_year": enrollment.academic_year_id if enrollment else None,
+        "current_grade": enrollment.grade_id if enrollment else None,
+        "current_class": enrollment.class_assigned_id if enrollment else None,
+    })

@@ -1,3 +1,4 @@
+from django.utils.timezone import now
 from django.db import models
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.core.exceptions import ValidationError
@@ -133,24 +134,36 @@ class Subject(models.Model):
         return f"{self.name} - {self.grade.name} - {self.academic_year.year}"
 
     def clean(self):
-        # Ensure that the subject is only associated with classes of the same grade
-        # (but defer this validation until the instance has been saved).
-        pass  # Move this logic to the save method
-    
-    def save(self, *args, **kwargs):
-        # First save the subject to ensure it has an ID and is stored in the database
-        super().save(*args, **kwargs)
-        
-        # Now validate the classes associated with this subject
-        for class_instance in self.classes.all():
-            if class_instance.grade != self.grade:
+        """
+        Validates that all classes assigned to this subject belong to the same grade as the subject.
+        """
+        if self.pk:  # Ensure the instance exists in the database
+            invalid_classes = [
+                class_instance.name
+                for class_instance in self.classes.all()
+                if class_instance.grade != self.grade
+            ]
+            if invalid_classes:
                 raise ValidationError(
-                    f"Cannot assign {self.name} (Grade {self.grade.name}) to {class_instance.name} (Grade {class_instance.grade.name}). "
-                    "The subject grade must match the class grade."
+                    f"The following classes are invalid for this subject: {', '.join(invalid_classes)}. "
+                    "Classes must match the grade of the subject."
                 )
-        
-        # If validation passes, save the subject again (if necessary)
-        super().save(*args, **kwargs)
+
+    def save(self, *args, **kwargs):
+        """
+        Save the Subject instance and perform validation.
+        """
+        # Perform validation before saving
+        self.full_clean()  # Calls the `clean` method and ensures field-level validation
+        super().save(*args, **kwargs)  # Save the object
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["name", "grade", "academic_year"],
+                name="unique_subject_per_grade_academic_year",
+            )
+        ]
 
 # Schedule Model
 class Schedule(models.Model):
@@ -198,20 +211,25 @@ class TeacherAssignment(models.Model):
 
 # Student Enrollment Model
 class StudentEnrollment(models.Model):
-    student = models.ForeignKey('StudentProfile', on_delete=models.CASCADE, blank=True, null=True)
-    class_assigned = models.ForeignKey(Class, on_delete=models.CASCADE, blank=True, null=True)
-    academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE, blank=True, null=True)
+    student = models.ForeignKey(StudentProfile, on_delete=models.CASCADE)  # Reference to the student
+    academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE)  # Academic year
+    grade = models.ForeignKey(Grade, on_delete=models.CASCADE)  # Associated grade
+    class_assigned = models.ForeignKey(Class, on_delete=models.CASCADE)  # Class within the grade
+    enrollment_date = models.DateField(default=now)  # Enrollment date
+    is_active = models.BooleanField(default=True)  # Status of the enrollment
 
     def __str__(self):
-        return f"{self.student.user.username} in {self.class_assigned.name} ({self.academic_year.year})"
-    
+        return f"{self.student.user.username} - {self.class_assigned.name} ({self.academic_year.year})"
+
     def clean(self):
-        if not self.class_assigned.is_active:
-            raise ValidationError(f"Cannot enroll student in an inactive class: {self.class_assigned.name}")
+        # Ensure the class's grade matches the selected grade
+        if self.class_assigned.grade != self.grade:
+            raise ValidationError(f"The selected class {self.class_assigned.name} does not match the grade {self.grade.name}.")
 
     def save(self, *args, **kwargs):
-        self.clean()
+        self.full_clean()  # Validate before saving
         super().save(*args, **kwargs)
+
 
 # Attendance Model
 class Attendance(models.Model):

@@ -113,8 +113,11 @@ class TeacherAssignmentAdmin(admin.ModelAdmin):
 
 @admin.register(StudentEnrollment)
 class StudentEnrollmentAdmin(admin.ModelAdmin):
-    list_display = ('student', 'class_assigned', 'academic_year')
-    list_filter = ('academic_year', 'class_assigned')
+    list_display = ('student', 'grade', 'class_assigned', 'academic_year', 'is_active')
+    list_filter = ('academic_year', 'grade', 'class_assigned', 'is_active')
+
+    search_fields = ('student__user__username', 'class_assigned__name', 'grade__name')
+    ordering = ('academic_year', 'grade', 'class_assigned')
 
 # Attendance
 @admin.register(Attendance)

@@ -33,5 +33,21 @@ urlpatterns = [
     path('get-subjects/', views.get_subjects, name="getSubjects"),
     path('create-subject/', views.create_subject, name='create-subject'),
     path('get-active-subject-options/', views.get_active_subject_options, name='get-active-subject-options'),
-
+    path("get-classes-for-grade-and-year/", views.get_classes_for_grade_and_year, name="get_classes_for_grade_and_year"),
+    path("create-subject/", views.create_subject, name="create_subject"),
+    path('get-subject/<int:subject_id>/', views.get_subject_details, name='get-subject'),
+    path('edit-subject/<int:subject_id>/', views.edit_subject, name='edit-subject'),
+    path('delete-subject/<int:subject_id>/', views.delete_subject, name='delete-subject'),
+    # Users
+    path("get-users/", views.get_users, name="get_users"),
+    path("user-profile/<int:user_id>/", views.user_profile, name="user_profile"),
+    path("create-user/", views.create_user, name="create_user"),
+    path("fetch-grades/", views.fetch_grades, name="fetch-grades"),
+    path("fetch-students-grouped-by-grade/", views.fetch_students_grouped_by_grade, name="fetch-students-grouped-by-grade"),
+    path("fetch-all-students/", views.fetch_all_students, name="fetch-all-students"),
+    path("fetch-academic-years/", views.fetch_academic_years, name="fetch-academic-years"),
+    path("fetch-grades/", views.fetch_grades, name="fetch-grades"),
+    path("fetch-classes-for-grade/<int:grade_id>/<int:academic_year_id>/", views.fetch_classes_for_grade, name="fetch-classes-for-grade"),
+    path("enroll-student/", views.enroll_student, name="enroll-student"),
+    path("get-enrollment-details/<int:student_id>/", views.get_enrollment_details, name="get-enrollment-details"),
 ]
