@@ -1,0 +1,9 @@
+Problem list
+
+### the teacher teaching the same subject to same class and need to add grade @ done
+
+### error in creating new class @ done
+
+### error creating the noti also in viewing @ done
+
+### error editing noti

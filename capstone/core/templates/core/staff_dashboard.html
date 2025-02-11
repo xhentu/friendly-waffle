@@ -91,13 +91,16 @@ Staff Dashboard
             <div id="users-dropdown" class="dropdown-content">
                 <a href="#" onclick="viewUsers()">View Users</a>
                 <a href="#" onclick="listAllStudents()">Student Enrollments</a>
+                <a href="#" onclick="listAllParentStudentRelationships()">Parent Relationships</a>
+                <a href="#" onclick="listAllTeachers()">Assign Teachers</a>
+                <a href="#" onclick="manageFees()">manage Fees</a>
+                
             </div>
         </li>
         <li>
             <button onclick="toggleDropdown('notifications-dropdown')">Manage Notifications</button>
             <div id="notifications-dropdown" class="dropdown-content">
-                <a href="#">Create Notification</a>
-                <a href="#">View Notifications</a>
+                <a href="#" onclick="fetchNotifications()">View Notifications</a>
             </div>
         </li>
     </ul>
@@ -126,5 +129,5 @@ Staff Dashboard
         }
     }
 </script>
-<script src="{% static 'js/staff_dashboard.js' %}"></script>
+<script type="module" src="{% static 'js/staff_dashboard.js' %}"></script>
 {% endblock %}

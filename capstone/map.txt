@@ -1,0 +1,33 @@
+### schedulde
+
+### their class
+
+### students in class
+
+### exam and exam grades
+
+### notification for their class
+
+--- make new subject and test it into schedule CRUD !!!!!! 23.01.2025 done
+
+--- error in editing existing schedulde, i think it is happening in frontend and backend not in models.py,
+we also need to get clean id after deleting schedulde if we delete id 1 new schedulde is id 2, 
+we dont want that. 24.01.2025 !!!! done
+
+--- error in creating teachers , when the teacher user is created, the salary is not added to database, 
+and the teacherProfile is not completed, 25.01.2025 after that clear the error above.
+now we have salary saved, need to test teacherProfile is created in teacher list. 25.01.2025 12:51 PM. done
+
+### make some class name in table header of schedulde , teacher schedule ( improvement ) not done.
+
+### Future Considerations for class attendance
+Batch Attendance Upload:
+Allow teachers to upload attendance records (e.g., via CSV) for multiple sections or classes.
+
+Automated Notifications:
+Send notifications to parents/guardians for students marked "Absent."
+
+Attendance Analytics:
+Add charts to visualize trends (e.g., absenteeism by section or subject).
+
+### function to check the class -> students -> a table with students attendance percentages !!!

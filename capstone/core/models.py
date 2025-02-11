@@ -2,6 +2,10 @@ from django.utils.timezone import now
 from django.db import models
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator
+
+# from django.contrib.auth import get_user_model
+# CustomUser = get_user_model()
 
 # Create your models here.
 class CustomUser(AbstractUser):
@@ -79,7 +83,6 @@ class SalaryPayment(models.Model):
 
     def __str__(self):
         return f'{self.profile.username} - {self.payment_date} - {self.amount_paid}'
-
 # Profile model for Students
 class StudentProfile(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
@@ -113,12 +116,13 @@ class Grade(models.Model):
 
     def __str__(self):
         return self.name
-
+# Class Model with Basic Fee
 class Class(models.Model):
     name = models.CharField(max_length=20, blank=True, null=True)  # Example: "Class A"
-    grade = models.ForeignKey(Grade, on_delete=models.CASCADE)
-    academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE, blank=True, null=True)
+    grade = models.ForeignKey('Grade', on_delete=models.CASCADE)
+    academic_year = models.ForeignKey('AcademicYear', on_delete=models.CASCADE, blank=True, null=True)
     is_active = models.BooleanField(default=True, blank=True, null=True)
+    fee = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, default=0.0)  # Basic class fee
 
     def __str__(self):
         return f"{self.name} - {self.grade.name} - {self.academic_year.year}"
@@ -164,13 +168,12 @@ class Subject(models.Model):
                 name="unique_subject_per_grade_academic_year",
             )
         ]
-
 # Schedule Model
 class Schedule(models.Model):
     SECTION_CHOICES = [
         ('1st Section', '9:00 am - 10:30 am'),
         ('2nd Section', '10:45 am - 12:15 pm'),
-        ('Break', '12:15 pm - 12:45 pm'),  # 30-minute break
+        ('Break', '12:15 pm - 12:45 pm'),
         ('3rd Section', '12:45 pm - 1:15 pm'),
         ('4th Section', '2:00 pm - 3:30 pm'),
     ]
@@ -188,10 +191,26 @@ class Schedule(models.Model):
     subject = models.ForeignKey(Subject, on_delete=models.SET_NULL, null=True, related_name="scheduled_sections")
     day_of_week = models.CharField(max_length=10, choices=DAY_CHOICES)
 
-    def __str__(self):
-        return f"{self.class_instance.name} - {self.section} ({self.day_of_week}) - {self.subject.name if self.subject else 'No Subject'}"
+    def clean(self):
+        """
+        Custom validation to ensure the subject's grade matches the class grade.
+        """
+        if self.subject and self.subject.grade != self.class_instance.grade:
+            raise ValidationError(
+                f"Subject '{self.subject.name}' belongs to Grade {self.subject.grade.name}, "
+                f"but the class '{self.class_instance.name}' belongs to Grade {self.class_instance.grade.name}."
+            )
 
-# Teacher Assignment Model
+    def save(self, *args, **kwargs):
+        """
+        Perform validation before saving.
+        """
+        self.full_clean()  # Calls the clean method
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.class_instance.name} - {self.subject.name if self.subject else 'No Subject'} ({self.day_of_week})"
+
 class TeacherAssignment(models.Model):
     teacher = models.ForeignKey('TeacherProfile', on_delete=models.CASCADE, blank=True, null=True)
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, blank=True, null=True)
@@ -200,27 +219,43 @@ class TeacherAssignment(models.Model):
 
     def __str__(self):
         return f"{self.teacher.user.username} teaches {self.subject.name} in {self.class_assigned.name} ({self.academic_year.year})"
-    
+
     def clean(self):
-        if not self.class_assigned.is_active:
-            raise ValidationError(f"Cannot assign teacher to an inactive class: {self.class_assigned.name}")
+        # Check if the same subject, class, and academic year assignment already exists
+        if TeacherAssignment.objects.filter(
+            teacher=self.teacher,
+            subject=self.subject,
+            class_assigned=self.class_assigned,
+            academic_year=self.academic_year,
+        ).exclude(pk=self.pk).exists():
+            raise ValidationError(
+                f"{self.teacher.user.username} is already teaching {self.subject.name} in {self.class_assigned.name} "
+                f"for the academic year {self.academic_year.year}."
+            )
 
     def save(self, *args, **kwargs):
-        self.clean()
+        self.full_clean()  # Validate before saving
         super().save(*args, **kwargs)
 
-# Student Enrollment Model
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["teacher", "subject", "class_assigned", "academic_year"],
+                name="unique_teacher_subject_class_year",
+            )
+        ]
+# Student Enrollment with Automatic Basic Fee Creation
 class StudentEnrollment(models.Model):
-    student = models.ForeignKey(StudentProfile, on_delete=models.CASCADE)  # Reference to the student
-    academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE)  # Academic year
-    grade = models.ForeignKey(Grade, on_delete=models.CASCADE)  # Associated grade
-    class_assigned = models.ForeignKey(Class, on_delete=models.CASCADE)  # Class within the grade
-    enrollment_date = models.DateField(default=now)  # Enrollment date
-    is_active = models.BooleanField(default=True)  # Status of the enrollment
+    student = models.ForeignKey('StudentProfile', on_delete=models.CASCADE)
+    academic_year = models.ForeignKey('AcademicYear', on_delete=models.CASCADE)
+    grade = models.ForeignKey('Grade', on_delete=models.CASCADE)
+    class_assigned = models.ForeignKey('Class', on_delete=models.CASCADE)
+    enrollment_date = models.DateField(default=now)
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.student.user.username} - {self.class_assigned.name} ({self.academic_year.year})"
-
+    
     def clean(self):
         # Ensure the class's grade matches the selected grade
         if self.class_assigned.grade != self.grade:
@@ -230,44 +265,137 @@ class StudentEnrollment(models.Model):
         self.full_clean()  # Validate before saving
         super().save(*args, **kwargs)
 
-
-# Attendance Model
+        # Automatically create a basic fee for the enrolled student
+        if not Fees.objects.filter(student=self.student, academic_year=self.academic_year).exists():
+            Fees.objects.create(
+                student=self.student,
+                amount_due=self.class_assigned.fee,
+                due_date=now().date(),
+                academic_year=self.academic_year,
+            )
+# Student Attendence model
 class Attendance(models.Model):
-    student = models.ForeignKey('StudentProfile', on_delete=models.CASCADE, blank=True, null=True)
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, blank=True, null=True)
-    date = models.DateField(blank=True, null=True)
-    status = models.CharField(max_length=10, choices=[('Present', 'Present'), ('Absent', 'Absent')], blank=True, null=True)
-    academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE, blank=True, null=True)
+    class_instance = models.ForeignKey('Class', on_delete=models.CASCADE)  # Class for the attendance record
+    section = models.CharField(
+        max_length=20,
+        choices=[
+            ('1st Section', '1st Section'),
+            ('2nd Section', '2nd Section'),
+            ('3rd Section', '3rd Section'),
+            ('4th Section', '4th Section'),
+        ],
+    )  # Section for the attendance
+    date = models.DateField()  # Date of the attendance
+    academic_year = models.ForeignKey('AcademicYear', on_delete=models.CASCADE)  # Academic year of the record
+    present_students = models.ManyToManyField(
+        'StudentProfile', 
+        related_name='present_attendance', 
+        blank=True
+    )  # List of present students
+    absent_students = models.ManyToManyField(
+        'StudentProfile', 
+        related_name='absent_attendance', 
+        blank=True
+    )  # List of absent students
+    total_students = models.PositiveIntegerField(default=0)  # Track total number of students in the class
+    created_at = models.DateTimeField(auto_now_add=True)  # Timestamp for record creation
+    updated_at = models.DateTimeField(auto_now=True)  # Timestamp for record update
 
     def __str__(self):
-        return f"{self.student.user.username} - {self.subject.name} - {self.date} ({self.status})"
+        return f"{self.class_instance.name} - {self.section} - {self.date}"
 
+    class Meta:
+        unique_together = ('class_instance', 'section', 'date')  # Ensure unique records for class, section, and date
+
+    @property
+    def present_count(self):
+        return self.present_students.count()
+
+    @property
+    def absent_count(self):
+        return self.absent_students.count()
+
+    @property
+    def attendance_summary(self):
+        """
+        Provides a summary of attendance in a dictionary format.
+        """
+        return {
+            'total_students': self.total_students,
+            'present_count': self.present_count,
+            'absent_count': self.absent_count,
+        }
+    
 class Exam(models.Model):
     name = models.CharField(max_length=100, blank=True, null=True)  # Example: "Mid-term Exam"
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, blank=True, null=True)
-    class_assigned = models.ForeignKey(Class, on_delete=models.CASCADE, blank=True, null=True)
+    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, blank=True, null=True)  # Grade-level exams
+    classes_assigned = models.ManyToManyField(Class, blank=True, related_name="exams")  # Allow multiple classes
     exam_date = models.DateField(blank=True, null=True)
     academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE, blank=True, null=True)
 
     def __str__(self):
-        return f"{self.name} - {self.subject.name} - {self.class_assigned.name} ({self.academic_year.year})"
+        return f"{self.name} - {self.subject.name} - {self.grade.name} ({self.academic_year.year})"
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["name", "subject", "grade", "academic_year"],
+                name="unique_exam_per_subject_grade_academic_year",
+            )
+        ]
 
 class ExamGrade(models.Model):
     student = models.ForeignKey('StudentProfile', on_delete=models.CASCADE, blank=True, null=True)
-    exam = models.ForeignKey(Exam, on_delete=models.CASCADE, blank=True, null=True)
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, blank=True, null=True)
-    grade = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)  # Example: 95.50
-    academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE, blank=True, null=True)
+    exam = models.ForeignKey('Exam', on_delete=models.CASCADE, blank=True, null=True)
+    subject = models.ForeignKey('Subject', on_delete=models.CASCADE, blank=True, null=True)
+    grade = models.DecimalField(
+        max_digits=5, decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],  # Grades between 0-100
+        blank=True, null=True
+    )
+    academic_year = models.ForeignKey('AcademicYear', on_delete=models.CASCADE, blank=True, null=True)
 
     def __str__(self):
         return f"{self.student.user.username} - {self.exam.name} - {self.subject.name} ({self.grade})"
 
+    def clean(self):
+        """Ensure student is enrolled in the correct class and subject matches the exam."""
+
+        # Get student's current enrollment for the given academic year
+        student_enrollment = StudentEnrollment.objects.filter(
+            student=self.student, academic_year=self.academic_year
+        ).order_by("-enrollment_date").first()  # Get the most recent enrollment
+
+        if not student_enrollment:
+            raise ValidationError(f"{self.student.user.username} is not enrolled in any class for this academic year.")
+
+        # Ensure student’s class is assigned to the exam
+        if not self.exam.classes_assigned.filter(id=student_enrollment.class_assigned.id).exists():
+            raise ValidationError(f"{self.student.user.username} is not enrolled in a class assigned to {self.exam.name}")
+
+        # Ensure subject matches the exam's subject
+        if self.subject != self.exam.subject:
+            raise ValidationError(f"Exam subject mismatch: Expected {self.exam.subject.name}, got {self.subject.name}")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()  # Validate before saving
+        super().save(*args, **kwargs)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student", "exam"],
+                name="unique_student_exam_grade",
+            )
+        ]
+# Fees Model
 class Fees(models.Model):
-    student = models.ForeignKey('StudentProfile', on_delete=models.CASCADE, blank=True, null=True)
+    student = models.ForeignKey('StudentProfile', on_delete=models.CASCADE)
     amount_due = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, blank=True, null=True)
     due_date = models.DateField(blank=True, null=True)
-    academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE, blank=True, null=True)
+    academic_year = models.ForeignKey('AcademicYear', on_delete=models.CASCADE, blank=True, null=True)
 
     def __str__(self):
         return f"{self.student.user.username} - Due: {self.amount_due}, Paid: {self.amount_paid}"
@@ -280,33 +408,39 @@ class Fees(models.Model):
             return "Partially Paid"
         else:
             return "Not Paid"
-        
+# Additional Fees Model
+class AdditionalFee(models.Model):
+    student = models.ForeignKey('StudentProfile', on_delete=models.CASCADE)
+    description = models.CharField(max_length=255)  # Example: "Sports Fee"
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    academic_year = models.ForeignKey('AcademicYear', on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"{self.student.user.username} - {self.description} - {self.amount}"
+
 class Notification(models.Model):
     SCOPE_CHOICES = [
-        ('Class', 'Specific Class'),
-        ('Grade', 'Grade-level Classes'),
-        ('School', 'Entire School'),
+        ("School", "Entire School"),
+        ("Grade", "Grade-level"),
+        ("Class", "Specific Class"),
+        ("Personal", "Personal"),
+        ("Admin", "Admins"),
+        ("Staff", "Staff"),
+        ("Teacher", "Teachers"),
+        ("Student", "Students"),
+        ("Parent", "Parents")
     ]
-    
+
     title = models.CharField(max_length=200)
     message = models.TextField()
-    sender = models.ForeignKey('StaffProfile', on_delete=models.CASCADE)  # Assuming StaffProfile includes admin, staff, teachers
-    scope = models.CharField(max_length=10, choices=SCOPE_CHOICES, default='School')
-    class_target = models.ManyToManyField(Class, blank=True)  # For 'Class' scope
-    grade_target = models.ManyToManyField(Grade, blank=True)  # For 'Grade' scope
+    sender = models.ForeignKey('CustomUser', on_delete=models.CASCADE)
+    scope = models.CharField(max_length=20, choices=SCOPE_CHOICES)
+    recipients = models.ManyToManyField(CustomUser, blank=True, related_name="notifications_received")  # General recipient field
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     def __str__(self):
-        return f"{self.title} - {self.sender.user.username}"
-
-    def clean(self):
-        # Skip ManyToManyField validation here
-        pass
-
-    def save(self, *args, **kwargs):
-        # Only call super().save; defer validation to signals or forms
-        super().save(*args, **kwargs)
+        return self.title
 
 class TeacherDailyAttendance(models.Model):
     date = models.DateField()
