@@ -1139,24 +1139,30 @@ def fetch_available_students(request):
     )
     return JsonResponse(list(students), safe=False)
 
-# Fetch notifications for users who can create/edit
 @csrf_exempt
+@login_required
 def fetch_notifications(request):
-    if request.user.role not in ["admin", "staff", "teacher"]:
-        return JsonResponse({"error": "Access denied"}, status=403)
-
-    notifications = Notification.objects.all().values(
-        "id", "title", "message", "scope", "is_active", "created_at", "sender_id"
-    )
-    return JsonResponse(list(notifications), safe=False)
-
-# Fetch notifications for recipients (students, parents, teachers, etc.)
-@csrf_exempt
-def fetch_my_notifications(request):
-    notifications = Notification.objects.filter(recipients=request.user).values(
-        "id", "title", "message", "scope", "is_active", "created_at", "sender_id"
-    )
-    return JsonResponse(list(notifications), safe=False)
+    """
+    Merged endpoint:
+    - If query parameter view=personal is provided, return only notifications for which
+      the logged-in user is a recipient.
+    - Otherwise, if the user has a management role (admin, staff, teacher), return all notifications.
+    """
+    view_type = request.GET.get("view", "").lower()
+    
+    if view_type == "personal":
+        notifications = Notification.objects.filter(recipients=request.user).values(
+            "id", "title", "message", "scope", "is_active", "created_at", "sender_id"
+        )
+        return JsonResponse(list(notifications), safe=False)
+    else:
+        # For management views, only allow admins, staff, and teachers
+        if request.user.role not in ["admin", "staff", "teacher"]:
+            return JsonResponse({"error": "Access denied"}, status=403)
+        notifications = Notification.objects.all().values(
+            "id", "title", "message", "scope", "is_active", "created_at", "sender_id"
+        )
+        return JsonResponse(list(notifications), safe=False)
 
 # Fetch available notification scopes based on user role
 @csrf_exempt
@@ -1175,7 +1181,7 @@ def fetch_notification_scopes(request):
 @csrf_exempt
 def fetch_notification_recipients(request):
     scope = request.GET.get("scope")
-
+    
     if scope == "School":
         recipients = CustomUser.objects.all()
     elif scope in ["Admin", "Staff", "Teacher", "Student", "Parent"]:
@@ -1194,7 +1200,7 @@ def fetch_notification_recipients(request):
         recipients = CustomUser.objects.all()
     else:
         return JsonResponse({"error": "Invalid scope"}, status=400)
-
+    
     return JsonResponse(list(recipients.values("id", "username")), safe=False)
 
 # Create a new notification

@@ -80,11 +80,10 @@ urlpatterns = [
     path("fetch-available-students/", views.fetch_available_students, name="fetch-available-students"),
     # notification case
     path("fetch-notifications/", views.fetch_notifications, name="fetch_notifications"),
-    path("fetch-my-notifications/", views.fetch_my_notifications, name="fetch_my_notifications"),
     path("fetch-notification-scopes/", views.fetch_notification_scopes, name="fetch_notification_scopes"),
     path("fetch-notification-recipients/", views.fetch_notification_recipients, name="fetch_notification_recipients"),
+    path("fetch-notification-recipients/<str:scope>/", views.fetch_notification_recipients, name="fetch_notification_recipients_with_scope"),
     path("create-notification/", views.create_notification, name="create_notification"),
-
 
     # teacher dashboard
     path('teacher-dashboard/', views.teacher_dashboard, name='teacher-dashboard'),

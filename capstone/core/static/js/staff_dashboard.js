@@ -76,6 +76,7 @@ import {
     fetchNotifications,
     createNotificationForm,
     toggleScopeFields,
+    fetchRecipientsForScope,
     // createNotification,
     // editNotification,
     // submitEditNotification,
@@ -171,6 +172,7 @@ window.submitStudentFee = submitStudentFee;
 window.fetchNotifications = fetchNotifications;
 window.createNotificationForm = createNotificationForm;
 window.toggleScopeFields = toggleScopeFields;
+window.fetchRecipientsForScope = fetchRecipientsForScope;
 // window.createNotification = createNotification;
 // window.editNotification = editNotification;
 // window.submitEditNotification = submitEditNotification;
